@@ -1,14 +1,13 @@
 import Link from 'next/link';
+import dbConnect from '@/lib/mongodb';
+import SiteSettings from '@/models/SiteSettings';
+import About from '@/models/About';
 
 async function getSiteSettings() {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'}/api/settings`, {
-      cache: 'no-store',
-    });
-    
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.success ? data.data : null;
+    await dbConnect();
+    const settings = await SiteSettings.findOne().lean();
+    return settings;
   } catch (error) {
     console.error('Error fetching site settings:', error);
     return null;
@@ -17,17 +16,39 @@ async function getSiteSettings() {
 
 async function getAboutData() {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'}/api/about`, {
-      cache: 'no-store',
-    });
+    await dbConnect();
+    const aboutData = await About.findOne().lean();
     
-    if (!res.ok) {
-      console.error('Failed to fetch about data:', res.status);
-      return null;
+    // If no about data exists, create default
+    if (!aboutData) {
+      const defaultAbout = await About.create({
+        profileImage: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800',
+        storyTitle: 'My Story',
+        storyContent: 'I am a professional model with years of experience in the fashion industry. My passion for modeling started at a young age, and I have worked with numerous brands and designers around the world.',
+        experiences: [
+          {
+            year: '2020-Present',
+            title: 'Professional Model',
+            description: 'Working with international brands and fashion houses',
+            order: 0,
+          },
+          {
+            year: '2018-2020',
+            title: 'Fashion Model',
+            description: 'Runway and editorial modeling',
+            order: 1,
+          },
+        ],
+        skills: [
+          { name: 'Runway Modeling', level: 95, order: 0 },
+          { name: 'Photo Shoots', level: 90, order: 1 },
+          { name: 'Commercial Modeling', level: 85, order: 2 },
+        ],
+      });
+      return defaultAbout.toObject();
     }
     
-    const data = await res.json();
-    return data.success ? data.data : null;
+    return aboutData;
   } catch (error) {
     console.error('Error fetching about data:', error);
     return null;
