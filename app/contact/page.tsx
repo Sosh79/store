@@ -1,6 +1,5 @@
-'use client';
-
-import { useEffect, useState } from 'react';
+import dbConnect from '@/lib/mongodb';
+import ContactInfo from '@/models/ContactInfo';
 
 interface SocialMedia {
   name: string;
@@ -27,43 +26,59 @@ interface ContactInfoData {
   };
 }
 
-export default function ContactPage() {
-  const [contactInfo, setContactInfo] = useState<ContactInfoData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+// Default contact data
+const defaultContactData: ContactInfoData = {
+  headerTitle: 'Get In Touch',
+  headerSubtitle: "Let's discuss how we can work together",
+  email: 'contact@modelpro.com',
+  phone: '+1 (555) 123-4567',
+  location: 'New York, NY',
+  businessHours: {
+    weekday: 'Monday - Friday: 9AM - 6PM EST',
+    weekend: 'Weekend: By Appointment',
+  },
+  socialMedia: [
+    { name: 'Facebook', url: 'https://facebook.com', icon: '📘' },
+    { name: 'Instagram', url: 'https://instagram.com', icon: '📷' },
+    { name: 'LinkedIn', url: 'https://linkedin.com', icon: '💼' },
+    { name: 'Twitter', url: 'https://twitter.com', icon: '🐦' },
+    { name: 'TikTok', url: 'https://tiktok.com', icon: '🎵' },
+  ],
+  legalTerms: {
+    copyright: 'All content, photographs, videos, and materials created during our collaboration remain the intellectual property of ModelPro. The customer may not republish, redistribute, or resell any content without explicit written permission.',
+    refundPolicy: 'All services are final sale. Once a service has been booked and scheduled, no refunds will be issued. In case of cancellation, credits may be offered for future services at our discretion.',
+    serviceAgreement: 'By requesting a service, you agree to our terms and conditions. All projects require a signed agreement before work begins. Payment terms and schedules will be outlined in the service agreement.',
+    privacy: 'We respect your privacy and maintain confidentiality of all client information. Personal data is protected in accordance with applicable privacy laws.',
+  },
+};
 
-  useEffect(() => {
-    fetchContactInfo();
-  }, []);
+async function getContactInfo(): Promise<ContactInfoData> {
+  try {
+    await dbConnect();
+    const contactInfo = await ContactInfo.findOne().lean();
 
-  const fetchContactInfo = async () => {
-    try {
-      const response = await fetch('/api/contact-info');
-      const data = await response.json();
-      if (data.success) {
-        setContactInfo(data.data);
-      }
-    } catch (error) {
-      console.error('Error fetching contact info:', error);
-    } finally {
-      setIsLoading(false);
+    // If data exists in database, use it
+    if (contactInfo) {
+      return contactInfo as ContactInfoData;
     }
-  };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    // If no data exists, try to create it
+    try {
+      const newContactInfo = await ContactInfo.create(defaultContactData);
+      return newContactInfo.toObject() as ContactInfoData;
+    } catch (createError) {
+      console.log('Could not create contact info, using defaults:', createError);
+      return defaultContactData;
+    }
+  } catch (error) {
+    console.error('Error fetching contact info:', error);
+    // Always return default data if there's any error
+    return defaultContactData;
   }
+}
 
-  if (!contactInfo) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-xl text-gray-600">Failed to load contact information</p>
-      </div>
-    );
-  }
+export default async function ContactPage() {
+  const contactInfo = await getContactInfo();
 
   return (
     <div className="min-h-screen bg-gray-50">
