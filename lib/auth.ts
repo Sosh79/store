@@ -14,27 +14,35 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
+          console.error('Missing credentials');
           throw new Error('Please enter email and password');
         }
 
         try {
+          console.log('Connecting to database...');
           await dbConnect();
+          console.log('Database connected');
 
+          console.log('Looking for admin with email:', credentials.email);
           const admin = await Admin.findOne({ email: credentials.email });
 
           if (!admin) {
+            console.error('Admin not found');
             throw new Error('Invalid email or password');
           }
 
+          console.log('Admin found, verifying password...');
           const isPasswordValid = await bcrypt.compare(
             credentials.password,
             admin.password
           );
 
           if (!isPasswordValid) {
+            console.error('Invalid password');
             throw new Error('Invalid email or password');
           }
 
+          console.log('Authentication successful');
           return {
             id: admin._id.toString(),
             email: admin.email,
@@ -42,6 +50,9 @@ export const authOptions: NextAuthOptions = {
           };
         } catch (error) {
           console.error('Auth error:', error);
+          if (error instanceof Error) {
+            throw error;
+          }
           throw new Error('Authentication failed');
         }
       },
@@ -69,11 +80,11 @@ export const authOptions: NextAuthOptions = {
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV === 'development',
+  debug: true,
   useSecureCookies: process.env.NODE_ENV === 'production',
   cookies: {
     sessionToken: {
-      name: `next-auth.session-token`,
+      name: `${process.env.NODE_ENV === 'production' ? '__Secure-' : ''}next-auth.session-token`,
       options: {
         httpOnly: true,
         sameSite: 'lax',

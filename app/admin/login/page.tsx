@@ -19,18 +19,27 @@ export default function AdminLoginPage() {
     setIsLoading(true);
 
     try {
+      console.log('Attempting login...');
       const result = await signIn('credentials', {
         email: formData.email,
         password: formData.password,
         redirect: false,
       });
 
+      console.log('Login result:', result);
+
       if (result?.error) {
-        setError('Invalid email or password');
-      } else {
+        console.error('Login error:', result.error);
+        setError(result.error || 'Invalid email or password');
+      } else if (result?.ok) {
+        console.log('Login successful, redirecting...');
         router.push('/admin/dashboard');
+        router.refresh();
+      } else {
+        setError('Login failed. Please try again.');
       }
-    } catch {
+    } catch (err) {
+      console.error('Login exception:', err);
       setError('An error occurred. Please try again.');
     } finally {
       setIsLoading(false);
