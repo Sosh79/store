@@ -17,28 +17,33 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Please enter email and password');
         }
 
-        await dbConnect();
+        try {
+          await dbConnect();
 
-        const admin = await Admin.findOne({ email: credentials.email });
+          const admin = await Admin.findOne({ email: credentials.email });
 
-        if (!admin) {
-          throw new Error('Invalid email or password');
+          if (!admin) {
+            throw new Error('Invalid email or password');
+          }
+
+          const isPasswordValid = await bcrypt.compare(
+            credentials.password,
+            admin.password
+          );
+
+          if (!isPasswordValid) {
+            throw new Error('Invalid email or password');
+          }
+
+          return {
+            id: admin._id.toString(),
+            email: admin.email,
+            name: admin.username,
+          };
+        } catch (error) {
+          console.error('Auth error:', error);
+          throw new Error('Authentication failed');
         }
-
-        const isPasswordValid = await bcrypt.compare(
-          credentials.password,
-          admin.password
-        );
-
-        if (!isPasswordValid) {
-          throw new Error('Invalid email or password');
-        }
-
-        return {
-          id: admin._id.toString(),
-          email: admin.email,
-          name: admin.username,
-        };
       },
     }),
   ],
@@ -64,4 +69,17 @@ export const authOptions: NextAuthOptions = {
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
+  trustHost: true,
+  debug: process.env.NODE_ENV === 'development',
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      },
+    },
+  },
 };

@@ -13,6 +13,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  experimental: {
+    optimizePackageImports: ['@/components'],
+  },
 };
 
 export default nextConfig;
